@@ -1,0 +1,1 @@
+# settings.py - responsible for handling the bot's settings, such as the randomization settings and message interval.

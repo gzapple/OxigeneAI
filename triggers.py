@@ -211,14 +211,13 @@ async def handle_message(message, memory, generate_messages):
         if len(parts) == 2:
             await message.channel.send(send_config_help())
             return
-
         configuration = parts[2]
 
         if configuration not in CONFIGURATIONS:
             await message.channel.send(
                 "Invalid configuration.\n\n"
-                "Available configurations:\n" +
-                "\n".join(sorted(CONFIGURATIONS))
+                "Available configurations:\n"
+                + "\n".join(sorted(CONFIGURATIONS))
             )
             return
 
@@ -227,7 +226,6 @@ async def handle_message(message, memory, generate_messages):
                 send_config_attribute_help(configuration)
             )
             return
-
         attribute = parts[3]
 
-    # actual setting modification will go here later
+    # actual configuration modification will go here later

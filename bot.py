@@ -8,44 +8,64 @@ from triggers import handle_message
 
 from memory.memory import ServerMemory
 from genai.genai import generate_messages
-memory = ServerMemory()
+from server_settings.settings_manager import get_channel_settings
 
+memories = {}
+message_counters = {}
 
+def get_memory(guild_id, channel_id, memory_size):
+    if guild_id not in memories:
+        memories[guild_id] = {}
 
-message_counter = 0
+    if channel_id not in memories[guild_id]:
+        memories[guild_id][channel_id] = ServerMemory(memory_size)
+
+    return memories[guild_id][channel_id]
 
 #invite link: https://discord.com/oauth2/authorize?client_id=1550582722555019435&permissions=120832&integration_type=0&scope=bot
+
+
 
 class Client(discord.Client):
     async def on_ready(self): 
         print(f'Logged in as {self.user}')
 
-    async def on_message(self, message): 
-        global message_counter
+    async def on_message(self, message):
+
         if message.author == self.user:
             return
+
         print(f'Message from {message.author}: {message.content}')
 
-        memory.add_message(message)
-        message_counter += 1
+        current_settings = get_channel_settings(
+            message.guild.id,
+            message.channel.id
+        )
 
-        await handle_message(message, memory, generate_messages)
+        memory = get_memory(
+            message.guild.id,
+            message.channel.id,
+            current_settings["memory"]
+        )
 
+        channel_key = (
+            message.guild.id,
+            message.channel.id
+        )
 
-        if self.user in message.mentions:
-            stored_memory = memory.get_memory()
-            output = generate_messages(stored_memory)
-            if output:
-                await message.channel.send(output)
-            return
-        
-        if message_counter >= settings.MESSAGE_INTERVAL:
-            stored_memory = memory.get_memory()
-            output = generate_messages(stored_memory)
-            if output:
-                await message.channel.send(output)
+        if current_settings["read"]:
+            memory.add_message(message)
 
-            message_counter = 0
+            if channel_key not in message_counters:
+                message_counters[channel_key] = 0
+
+            message_counters[channel_key] += 1
+
+        await handle_message(
+            message,
+            memory,
+            generate_messages
+        )
 
 intents = discord.Intents.default() 
 intents.message_content = True 

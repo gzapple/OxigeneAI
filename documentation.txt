@@ -1,0 +1,232 @@
+all commands use the .o prefix
+
+there are three main levels of permissions:
+
+normal users:
+- can use normal oxigene commands
+- can create and manage their own custom tags
+- cannot change oxigene's server configuration
+
+moderators / administrators / server owners:
+- can change oxigene's server configuration
+- can configure which channels oxigene can read from
+- can configure which channels oxigene can send messages in
+- can change memory and message generation settings
+- can use other configuration commands depending on their permissions
+- cannot use owner-only commands
+
+owner (me):
+- only my discord account is allowed to use owner-specific commands
+- being a server owner, administrator, moderator, or having any other role does not allow these commands
+- owner permissions are checked using my discord user id rather than my username
+- owner commands can bypass or override normal server configuration
+- owner commands can control oxigene globally or directly modify a server's configuration
+
+the bot should check permissions before performing any command that changes settings
+
+the bot should also check whether the current channel allows oxigene to read or send messages before performing actions involving that channel
+
+channel permissions:
+- read determines whether oxigene is allowed to read and store messages from a channel
+- enable determines whether oxigene is allowed to send messages in a channel
+- a channel should not be added to memory unless oxigene has permission to read that channel
+- a channel being disabled from sending does not necessarily mean that oxigene cannot read it
+- server configuration should be isolated between servers
+- channel configuration should be isolated between channels
+- by default, channels should not be assumed to be enabled for oxigene
+- channel configuration should eventually be saved so that it does not reset when the bot restarts
+
+message flow:
+- bot.py receives the discord message
+- check if the message was sent by oxigene itself
+- check whether the channel allows oxigene to read
+- if reading is disabled, do not add the message to memory
+- if reading is enabled, add the message to memory
+- triggers.py checks whether the message is a command or trigger
+- check permissions if the command requires them
+- perform the requested action
+- check whether oxigene is allowed to send in the current channel before sending a response
+
+normal user commands:
+.o send ---- forces Oxigene to send a random message
+.o custom [tag] [bot_message] --- allows anyone to send a custom tag or message for the bot to send. limit is 10 custom tags per user
+.o custom show [userid]---- shows the tags a user has. if '.o custom show' is ran, then the user who sent that command will have their tag shown. if the same command is run but a user is pinged afterward, itll show that user's tags. the user who runs the pinged command cannot edit another user options
+.o custom edit [tag_name]
+> edit options: rename, delete, edit, wipe --------rename renames the tag name, delete deletes tag, edit can edit the bot message, wipe wipes all the tags you have
+
+custom tag rules:
+- users can only edit or delete their own custom tags
+- users cannot edit another user's custom tags
+- users can view another user's tags if they use the appropriate show command
+- each user can have a maximum of 10 custom tags
+- custom tags should be isolated between servers
+- custom tags should not be part of oxigene's normal memory unless specifically designed to be
+- custom tags are separate from oxigene's random generated memory system
+
+configuration:
+.o help  --- sends a help menu, which outputs what documentation.txt has
+.o status --- shows the current oxigene status for the current server and channel
+.o config --- shows the current oxigene configuration for the current server and channel
+
+.o read [boolean]---- reads the channel
+.o enable [boolean] --- allows bot to send messages
+
+.o interval [int] --- interval for bot to send a message
+.o memory [int] --- max memory size for bt
+.o allow [links,embeds,emojis,images] [boolean]
+.o wipe [boolean]----- clears out bot memory
+
+configuration permissions:
+- normal users cannot change oxigene configuration
+- moderators can change oxigene configuration if they have the configured oxigene moderator role
+- administrators can change oxigene configuration
+- server owners can change oxigene configuration
+- the server owner / administrator should be able to configure which role is considered the oxigene moderator role
+- configuration commands should only affect the server where the command was used
+- configuration should be separated between servers
+- owner commands can bypass normal configuration restrictions
+
+read and send configuration:
+- .o read true allows oxigene to read and store messages from the current channel
+- .o read false prevents new messages from the current channel from being added to memory
+- .o enable true allows oxigene to send messages in the current channel
+- .o enable false prevents oxigene from sending messages in the current channel
+- read and enable should be treated as separate settings
+- a channel can eventually be configured to allow reading without allowing oxigene to send
+- oxigene should not read messages from channels that have not been enabled for reading
+
+allow configuration:
+- .o allow links [boolean] --- allows or prevents links from being used by oxigene
+- .o allow embeds [boolean] --- allows or prevents embeds from being used by oxigene
+- .o allow emojis [boolean] --- allows or prevents emojis from being used by oxigene
+- .o allow images [boolean] --- allows or prevents images from being used by oxigene
+- these settings control what types of content oxigene can use when reading or processing messages
+- normal message text is still handled by the normal read setting
+
+status and configuration information:
+.o status --- shows the current status of oxigene
+- shows whether oxigene can read the current channel
+- shows whether oxigene can send messages in the current channel
+- shows current memory usage
+- shows the configured memory limit
+- shows the current message interval
+- shows other relevant settings
+
+.o config --- shows the current configuration for the server
+- shows read and send settings
+- shows memory settings
+- shows interval settings
+- shows content permission settings
+- shows whether automatic generation is enabled
+- does not modify any settings
+
+wipe:
+.o wipe [boolean]----- clears out bot memory
+- wiping memory should only affect the appropriate server/channel memory
+- wiping memory should not affect other servers
+- wiping a channel should not automatically wipe another channel's memory
+- this is a destructive command and should eventually require confirmation
+- owner commands can bypass normal wipe restrictions if necessary
+
+automatic generation:
+- oxigene can automatically generate a random message after a configured number of messages
+- the interval is controlled by .o interval [int]
+- oxigene's own messages should not count toward the interval
+- messages from channels that oxigene is not allowed to read should not count toward the interval
+- the interval should be tracked separately for each server
+- channel-specific behavior should respect whether oxigene is allowed to send in that channel
+- automatic generation should not bypass channel send permissions
+
+special triggers:
+- oxigene can have special phrase-based responses separate from .o commands
+- these triggers can cause oxigene to immediately respond
+- special triggers should respect channel send permissions
+- special triggers should not automatically grant a user additional permissions
+- special triggers can eventually be configured or expanded without changing the main bot.py file
+
+examples of special triggers:
+- stfu
+- bacon when the
+- biology
+- genai
+- bot mentions
+- role mentions
+- direct mentions
+- replies
+
+mention and reply triggers:
+- oxigene should be able to respond when directly mentioned
+- oxigene should be able to respond when a user replies to an oxigene message if reply responses are enabled
+- oxigene should be able to respond when an enabled role is mentioned if role mention responses are enabled
+- oxigene should be able to respond when another bot mentions oxigene if bot mention responses are enabled
+- these responses should still respect the current channel's read and send settings
+- bot-to-bot interaction should be allowed unless specifically disabled
+- oxigene should ignore its own messages to prevent self-triggering loops
+
+owner specific (me):
+.o global [command configuration like 'read', 'enable', 'interval', 'memory'] [attribute] ---- bypasses and overrides configuration to put larger ammounts, so if the server max is 5000 memory size, i can configure it to be 5234. if someone runs .o wipe true, i can go .o global wipe false and itll reverse the change
+.o shutdown [boolean]--- shuts down the bot in a server. even if someone tries .o help or .o read or .o enable, it is shut d
+.o shutdown [channel id] [channel id]..... --- shuts down bot in a channel or channels
+.o mbank --- can view and edit entire memory bank of a bot in a server
+.o mbank [channel id] [channel id]..... --- can view and edit of a bot in a channel or channels
+.o tedit ---- gives me global tag configuration and editing and view
+
+owner command rules:
+- owner commands can only be executed by my discord account
+- owner permissions are checked using my discord user id
+- username, nickname, display name, or server role should not be used as the owner authentication method
+- server owners and administrators cannot use owner-only commands unless they are also the configured owner account
+- owner commands can override server-level configuration
+- owner commands can be used to debug or manage oxigene across servers
+- owner commands should be separated from normal server configuration commands
+- owner commands should not accidentally become available to normal users through roles or permissions
+
+global configuration:
+.o global [command configuration like 'read', 'enable', 'interval', 'memory'] [attribute] ---- bypasses and overrides server configuration
+- global configuration can override normal server limits
+- global configuration can allow values that normal server configuration cannot use
+- global overrides should take priority over server configuration
+- if no global override exists, the server configuration is used
+- if no server configuration exists, the default configuration is used
+- global configuration should be isolated from normal server configuration
+- global configuration should only be accessible to the owner
+
+shutdown:
+.o shutdown [boolean]--- shuts down the bot in a server. even if someone tries .o help or .o read or .o enable, it is shut d
+.o shutdown [channel id] [channel id]..... --- shuts down bot in a channel or channels
+- a server shutdown should prevent oxigene from functioning in that server
+- a channel shutdown should prevent oxigene from functioning in the specified channels
+- shutdown should not delete server configuration
+- shutdown should be reversible by the owner
+- shutdown should take priority over normal read and send settings
+- a shutdown channel should not add messages to memory
+- a shutdown channel should not allow oxigene to send messages
+
+memory bank:
+.o mbank --- can view and edit entire memory bank of a bot in a server
+.o mbank [channel id] [channel id]..... --- can view and edit of a bot in a channel or channels
+- memory bank commands are owner-only
+- memory bank access should allow viewing stored memory
+- memory bank access should eventually allow searching memory
+- memory bank access should eventually allow removing or editing specific stored information
+- memory bank access should allow viewing memory for specific channels
+- memory bank access should not expose memory from another server unless explicitly requested by the owner
+- memory bank operations should not accidentally modify normal server configuration
+
+tag editing:
+.o tedit ---- gives me global tag configuration and editing and view
+- tedit is owner-only
+- tedit controls global custom tag configuration
+- tedit can view custom tags across servers
+- tedit can edit or delete custom tags when necessary
+- tedit should be separate from normal user custom tag commands
+- tedit should not allow normal server administrators to access global tag management
+
+future configuration:
+- settings should eventually be stored persistently so they survive bot restarts
+- server settings should be stored separately from global owner settings
+- channel settings should be stored separately from server settings
+- custom tags should be stored separately from memory
+- permissions should be checked before configuration changes
+- commands should give useful error messages when a user does not have permission
+- commands should not silently fail when possible
